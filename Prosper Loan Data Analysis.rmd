@@ -1,0 +1,433 @@
+Prosper Loan Data Exploratory Data Analysis by Akanksha Goel
+========================================================
+
+# Abstract
+
+[Prosper](https://www.prosper.com/) is the market leader in peer-to-peer lending, a popular alternative to traditional loans and investing options. They try to cut out the middleman to connect people who need money with those who have money to invest.The dataset comprises of more than 1 lakh listings and the timespan of this dataset is from end of 2005 and 2014.
+In this data analysis i first tried to know what is the meaning of variables in dataset and chose some of the variables which took my interest and as i explored some more variable added up in the analysis.
+The main objective of this analysis is what are the factors that increase or decrease the chances of getting loans.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+library(ggplot2)
+library(knitr)
+library(gridExtra)
+library(dplyr)
+```
+
+
+# Load the dataset
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Load_the_Data}
+getwd()
+setwd('/Users/AKANKSHA/Desktop/proj1')
+ld <- read.csv('prosperLoan.csv')
+
+```
+# Modification of variables
+In this section cleaning of variables are done according to the need of analysis.
+For example the ListingCategory is mentioned numerically so i have changed the numerical category into what they actually mean.It will be easy to understand when plotted on the axis.
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, modifications}
+labels <- c("Debt Consolidation", "Home Improvement", "Business", "Personal Loan", "Student Use", "Auto", "Baby & Adoption", "Boat", "Cosmetic Procedure", "Engagement Ring", "Green Loans", "Household Expenses", "Large Purchases", "Medical/Dental", "Motorcycle", "RV", "Taxes", "Vacation", "Wedding", "Other", "Not Applicable")
+  
+  ld$ListingCategory <- factor(ld$ListingCategory..numeric.,
+                                  levels = c(1:6, 8:20, 7, 0),
+                                  labels = labels)
+  
+
+
+```
+
+Then i have used python to add a variable **LoanOriginationYear** to the dataset.So when the plot is built the axis would be in increasing order of the year and we can analyse different variables with increasing time.
+
+```
+import csv
+reader = csv.reader(open('ProsperLoanData.csv', 'rb'))
+
+writer = csv.writer(open('ProsperLoan.csv', 'w'))
+headers = reader.next()
+
+headers.append("LoanOriginationYear")
+writer.writerow(headers)
+i=0
+for row in reader:
+    value  = row[65] 
+    import re
+    match_year=re.search(r"\d\d\d\d",value)
+    match_quarter=re.search(r"\w\d",value)
+    LOQ= match_year.group()+" "+match_quarter.group()
+    a.append(LOQ)
+    row.append(value)
+    i = i+1
+    writer.writerow(row)
+
+```
+
+The dataset comprises of 113937 observations of 83 variables.
+Univariate,bivariate and multivariate analysis of this dataset has been done for finding answers to the questions.
+
+
+
+```{r echo=FALSE}
+str(ld)
+```
+
+## Univariate Plots Section and Analysis
+
+As there are many types of Loan which people can apply for.Let us see which type of Loans most of the people apply for?
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots1}
+qplot(ListingCategory,data=ld,fill=I('#BD5747'))+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+This plot answers to the question,most of the people apply for Debt consolidation i.e. taking out a new loan to pay off a number of liabilities and other debts like student loan debt, credit card debt and other types of debts.
+Now what these people do and where do the most of the people live?
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots2}
+qplot(EmploymentStatus,data=subset(ld,EmploymentStatus !=''),fill=I('#BD5747'))+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+Sorting the occupations in descending order of people who buy loans.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, Univariate_Plots3}
+subset.occupation <- within(subset(ld,Occupation !=''), 
+                   Occupation<- factor(Occupation, 
+                                      levels=names(sort(table(Occupation), 
+                                                        decreasing=TRUE))))
+``` 
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots3A}
+
+ggplot(aes(x=Occupation),data=subset.occupation)+geom_bar(fill=I('#BD5747'))+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+```
+
+Most of the people are employed and are proffesionals.
+
+Sorting the BorrowerStates in the descending order of people who live in the state.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, Univariate_Plots4}
+subset.BorrowerState <- within(subset(ld,BorrowerState !=''), 
+                               BorrowerState<- factor(BorrowerState, 
+                                levels=names(sort(table(BorrowerState), 
+                                    decreasing=TRUE))))
+``` 
+```{r echo=FALSE, message=FALSE, warning=FALSE,PLOT4A}
+
+ggplot(aes(x=BorrowerState),data=subset.BorrowerState)+geom_bar(fill=I('#BD5747'))+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+```
+
+Most of the people are from california.Now the question arises whether the people of california are the people who are taking Debt consolidation loans and influencing the number of debt consolidation loans.This question is answered in the bivariate plot section.
+
+What is the range of income of people who apply for Loans?
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots5}
+qplot(IncomeRange,data=ld,fill=I('#BD5747'))
+```
+
+This plot is not in correct order.So this problem is solved in the next plot.
+
+```{r}
+
+qplot(x = IncomeRange, data =ld,fill=I('#BD5747')) +
+  scale_x_discrete(limits = c("Not employed", "$0", "$1-24,999", "$25,000-49,999", "$50,000-74,999", "$75,000-99,999", "$100,000+", "Not displayed"))+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+This plot shows that most of the people's income range from $25,000 to $74,999.This can also be seen that people who are not employed or earn very less doesn't apply for loans much.
+What is the Loan status for most of the loans applied?Is the process of rating is good that allows defaulters to be listed with poor rating?
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots6}
+qplot(LoanStatus,data=ld,fill=I('#BD5747'))+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Most of the loans are still in process and many Loans have been successfully completed which shows there success.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots7}
+
+subset_default_ps <- subset(ld,ld$LoanStatus=='Defaulted'& !is.na(ProsperScore))
+subset_default_ps$prosper_score.bucket <- cut(subset_default_ps$ProsperScore,breaks=4)
+p1 <- qplot(prosper_score.bucket,data=subset_default_ps,fill=I('#BD5747'))
+p2 <- qplot(ProsperRating..Alpha.,data=subset_default_ps,fill=I('#BD5747'))
+grid.arrange(p1,p2)
+
+```
+
+Now,it can be clearly seen that defaulters are the one getting poor prosper score and ratings which decides the probability of the person getting the loan.
+
+Now comparison between people who applied before 2009 had credit Grade and people who applied after 2009 had Prosper Score?
+
+```{r,message=FALSE,warning=FALSE,up8}
+p1 <-ggplot(aes(ProsperRating..Alpha.),data=subset(ld,ProsperRating..Alpha.!=''),
+            color='red')+geom_bar(fill=I('#BD5747'))
+
+p2 <-ggplot(aes(CreditGrade),data=subset(ld,CreditGrade!=''),
+            color='green')+geom_bar(fill=I('#BD5747'))
+
+grid.arrange(p1,p2)
+
+table(ld$ProsperRating..Alpha.)
+
+table(ld$CreditGrade)
+```
+
+Every variable has increased manifolds but AA rating has been increased very less.With this implementation one can see that getting AA was much easy before 2009 but is much difficult after 2009 maybe due to strict Rating system after 2009.
+
+
+# Bivariate Plots Section
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Plots1}
+ggplot(aes(x=BorrowerRate,y=LenderYield),data=ld,fill=I('#BD5747'))+geom_point()
+cor(ld$BorrowerRate,ld$LenderYield)
+```
+
+As the interest rate on borrower increases the gain to the lender increases
+and the correlation is also very high.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,Bivariate_Plots2}
+ggplot(aes(x=BorrowerState),data=subset.BorrowerState)+
+  geom_bar(aes(fill=ListingCategory))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  scale_color_brewer(type='qual')
+```
+
+This plot answers the question mentioned in univariate plot.It can be clearly seen that california has maximum number of people who apply for Debt consolidation Loans.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Plots3}
+qplot(CurrentCreditLines,data=subset(ld,!is.na(ProsperScore)),fill=I('#BD5747'))+facet_wrap(~ProsperScore)
+
+```
+
+The above plot shows the relationship between Current creditLines and the prosper SCore,this plot doesn't give any significant relationship but an nice normal curve for credit lines.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Plots4}
+loan_ts <- ld %>%
+  group_by(LoanOriginationYear,Investors) %>%
+  summarise(mean_LoanOriginalAmount=mean(LoanOriginalAmount),
+            n=n()) %>%
+  ungroup(Investors) %>%
+  arrange(LoanOriginationYear)
+
+
+ggplot(aes(x = LoanOriginationYear, y = n), data = loan_ts) +
+  geom_bar(stat = "identity",fill=I('#BD5747'))+
+  ylab('Number of Loans')+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+ggplot(aes(x = LoanOriginationYear, y = mean_LoanOriginalAmount), data = loan_ts) +
+  geom_bar(stat = "identity",fill=I('#BD5747'))+
+  ylab('Number of Loans')+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+This plot shows the relationship of Revolving Credit Balance and Total Prosper Loans.This can be directly seen that as the prosper Loans increase the revolving balance in Revoving accounts is decreased by significant bits.
+
+This plot shows that Loan origination amount increases significantly post2009.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Plots5}
+ggplot(aes(x=TotalProsperLoans,y=OpenRevolvingAccounts),data=ld)+
+  geom_bar(stat='identity',fill=I('#BD5747'))
+```
+
+Open Revolving accounts also decrease with the increase in 
+Total Prosper Loans.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Plots6}
+subs_ld <- subset(ld,!is.na(IsBorrowerHomeowner)&!is.na(ProsperScore))
+qplot(ProsperScore,data=subs_ld,binwidth=1,color=IsBorrowerHomeowner,geom='freqpoly')+xlim(0,quantile(subs_ld$ProsperScore,(0.90)))
+
+```
+
+This plot is comparing between the prosper score of the people who have their homes or not.It is clearly seen that the count of people getting good prosper score increases with the people having their own homes.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Plots7}
+sub_ld <- subset(ld,(OnTimeProsperPayments)!=0 &ProsperScore !='')
+ggplot(aes(x=ProsperScore,y=OnTimeProsperPayments),data=sub_ld)+
+  geom_histogram(stat = 'identity',fill=I('#BD5747'))+
+  xlim(0,quantile(sub_ld$ProsperScore,(0.90)))
+```
+
+The above plot shows the direct relationship between OntimeprosperPayments and ProsperScore i.e if their is any effect on prosper score if the people give there payments on time.This plot shows that as the OnTimePayments increase the Prosper Score increases.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Plots8}
+ggplot(aes(x=EmploymentStatus,y=ProsperScore),data=subset(ld,!is.na(ProsperScore)))+geom_boxplot()
+```
+
+The above boxplot shows that people working full time has much higher Prosper Score and self employed people are considered risky to give loans.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Plots9}
+prosper_score.bucket <- cut(ld$ProsperScore,breaks = 4)
+ggplot(aes(x=LoanStatus,y=ProsperScore),data=ld)+geom_boxplot()+
+  ylim(0,quantile(ld$OpenRevolvingAccounts,(0.90)))+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+The above boxplot shows that as the people tend to complete their Loan payments tend to have high prosper score.It is undesirable that person who is defaulted has also acheived greater prosper score then the people who have past due.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Plots10}
+subset_ld <- subset(ld,!is.na(ProsperScore)& !is.na(TotalProsperLoans))
+ld_prosper <- subset_ld %>%
+  group_by(TotalProsperLoans) %>%
+  summarise(mean_prosperscore=mean(ProsperScore),
+            n=n()) 
+ 
+ggplot(aes(x=TotalProsperLoans,y=mean_prosperscore),data=ld_prosper)+geom_line()+xlim(0,quantile(ld_prosper$TotalProsperLoans,(.90)))
+cor(x=ld_prosper$mean_prosperscore,y=ld_prosper$TotalProsperLoans)
+```
+
+It can be seen that as the number of loans in there bucket increase there prosper score increases significantly.The correlation is also much high.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Plots11}
+subset_default <- subset(ld,ld$LoanStatus=='Defaulted')
+loan_timeseries <- subset_default %>%
+  group_by(LoanOriginationYear) %>%
+  summarise(Defaulters=n()) %>%
+  arrange(LoanOriginationYear)
+
+
+ggplot(aes(x = LoanOriginationYear, y = Defaulters), data = loan_timeseries) +
+  geom_bar(stat = "identity",fill=I('#BD5747'))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+This can be clearly seen as time passed by number of defaulters have decreased significantly.It can also be seen that defaulters were very high pre 2009 and defaulters are much less significantly post 2009 maybe due to good and stricter rating system.
+
+
+# Multivariate Plots Section
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Multivariate_Plots1}
+
+ggplot(aes(x = LoanOriginationYear, y = n), data = loan_ts) +
+  geom_bar(aes(color=Investors),stat = "identity", fill = I("#0077C0"))+
+  ylab("Number of loans")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+This above plot gives us idea that as the time passed by number of investors increased.This is an indication of increase Trust of investors on this Prosper that they will get there money back.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Multivariate_Plots2}
+
+loan_timeseries <- ld %>%
+  group_by(LoanOriginationYear,RevolvingCreditBalance) %>%
+  summarise(mean_LoanOriginalAmount=mean(LoanOriginalAmount),
+            n=n()) %>%
+  ungroup(RevolvingCreditBalance) %>%
+  arrange(LoanOriginationYear)
+
+
+
+ggplot(aes(x = LoanOriginationYear, y = n), data = loan_timeseries) +
+  geom_bar(aes(color=RevolvingCreditBalance),stat = "identity", fill = I("#0077C0"))+
+  ylab("Number of loans")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+This plot shows that revolving credit balance decreased with time.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Mv3}
+
+loan_ts <- ld %>%
+  group_by(LoanOriginationYear,LoanStatus) %>%
+  summarise(mean_LoanOriginalAmount=mean(LoanOriginalAmount),
+            n=n()) %>%
+  ungroup(LoanStatus) %>%
+  arrange(LoanOriginationYear)
+
+ggplot(aes(x = LoanOriginationYear, y = n), data = loan_ts) +
+  geom_bar(aes(fill=LoanStatus),stat = "identity")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  ylab("Number of Loans")+
+  scale_fill_manual(values = c("#DD170D","#0DDDC1", "#0C9CEE", "#2EB872","#DD170D","#2EB872","#8B0DDD", "#8B0DDD", "#8B0DDD","#8B0DDD", "#8B0DDD", "#8B0DDD"))
+
+```
+
+The above plot shows the relationship of number of loans with time.
+Now,the plot also shows relationship of number of defaulters with time.
+This plot is further explained properly in final plots section.
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Multivariate_Plots4}
+subset_ld <- subset(ld,!is.na(ProsperScore)& !is.na(TotalProsperLoans))
+ld_prosper_homeowner <- subset_ld %>%
+  group_by(TotalProsperLoans,IsBorrowerHomeowner) %>%
+  summarise(mean_prosperscore=mean(ProsperScore),
+            n=n()) %>%
+  ungroup()
+
+ggplot(aes(x=TotalProsperLoans,y=mean_prosperscore,color=IsBorrowerHomeowner),data=ld_prosper_homeowner)+geom_line()+xlim(0,quantile(ld_prosper_homeowner$TotalProsperLoans,(.85)))
+```
+
+This Plot shows the relationship of Total prosper Loans pssesed by a person and Prosper score.This plot is further explained in final plot section.
+
+------
+
+# Final Plots and Summary
+
+
+### Plot One
+```{r echo=FALSE, message=FALSE, warning=FALSE, Plot_One}
+
+loan_ts <- ld %>%
+  group_by(LoanOriginationYear,LoanStatus) %>%
+  summarise(mean_LoanOriginalAmount=mean(LoanOriginalAmount),
+            n=n()) %>%
+  ungroup(LoanStatus) %>%
+  arrange(LoanOriginationYear)
+
+ggplot(aes(x = LoanOriginationYear, y = n), data = loan_ts) +
+  geom_bar(aes(fill=LoanStatus),stat = "identity")+
+  ylab("Number of loans")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  scale_fill_manual(values = c("#DD170D","#0DDDC1", "#0C9CEE", "#2EB872","#DD170D","#2EB872","#8B0DDD", "#8B0DDD", "#8B0DDD","#8B0DDD", "#8B0DDD", "#8B0DDD"))
+
+```
+
+I have chosen this plot as it gives the idea of relation betweeen number of loans for which people applied and timeseries.The above plot shows that as the time increased the people started trusting on the prosper Loans and find them solution to different debts.As it can be seen in previous studies that most of the people apply for debt consolidation.
+Now,the plot also shows relationship of number of defaulters with time.As the time increases the number of defaulters decrease.Pre-2009 their were many defaulters maybe they changed their model such that post-2009 the defaulters have been reduced considerably and most of the people have completed there transactions.
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE,plot2}
+subset_ld <- subset(ld,!is.na(ProsperScore)& !is.na(TotalProsperLoans))
+ld_prosper_homeowner <- subset_ld %>%
+  group_by(TotalProsperLoans,IsBorrowerHomeowner) %>%
+  summarise(mean_prosperscore=mean(ProsperScore),
+            n=n()) %>%
+  ungroup()
+
+ggplot(aes(x=TotalProsperLoans,y=mean_prosperscore,color=IsBorrowerHomeowner),data=ld_prosper_homeowner)+geom_line()+xlim(0,quantile(ld_prosper_homeowner$TotalProsperLoans,(.85)))
+```
+
+The above plot describes the relationship between Total ProsperLoan and mean prosper score.They are directly propotional as the Prosper Loans owned by person increases it increases tendency to get loan in future easily .
+It can also be seen that as the person owns his own home has tendency to get more prosper score and has got more number of loans.
+
+### Plot Three
+```{r echo=FALSE, message=FALSE, warning=FALSE, Plot_Three}
+
+ggplot(aes(x=EmploymentStatus,y=ProsperScore),data=subset(ld,!is.na(ProsperScore)))+geom_boxplot()
+
+```
+
+This plot above shows the relationship of being employed increases the probability of getting Loans.As the person is full time emplyed has much increased prosper score.
+The person who is self employed gets attached to the risk of getting unemployed and the prosper score gets affected negatively.
+
+------
+
+# Reflection
+
+In this whole exploratory analysis I went through various challenges as I din't had any idea about the process of getting Loans.
+
+This process lead to learning of various definitions and various relationships between the variables.This exploratory analysis also helped me to know which type of plots are suitable  for categorical variables and descrete variables respectively.
+
+In this analysis I tried to  focus on the factors that effect the process of Loan attainment.This was surprising to see that defaulters have prosper score is above 3.5 that means there are other factors that reduce the prosper score in the rating system.
+In future, I plan to explore more of the variables which are not considered in this Exploratory analysis.
+
+
+
+
+
